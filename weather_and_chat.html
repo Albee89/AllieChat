@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block title %}Weather and Chat - My Weather App{% endblock %}
+<form action="/get_weather_and_chat">
+{% block content %}
+    <h1>Weather and Chat</h1>
+    <p>City: {{ city }}</p>
+
+    {% if weather %}
+        <p>Weather: {{ weather }}</p>
+    {% else %}
+        <p>Weather information not available.</p>
+    {% endif %}
+
+    <h2>Chatbot Response:</h2>
+    <p>{{ chatbot_response }}</p>
+{% endblock %}
+
+</form>
