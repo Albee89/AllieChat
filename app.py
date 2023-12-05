@@ -1,21 +1,21 @@
 from flask import Flask, render_template
 from flask_sqlalchemy import SQLAlchemy
+import requests
 
 app = Flask(__name__)
 
-db_name = r'/Users/ruthfisher-bain/PycharmProjects/pythonProject3/ab_bit.db'
+db_name = "/Users/ruthfisher-bain/PycharmProjects/pythonProject3/newest_chat.db"
 
 #configuring SQLite DB:
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + db_name
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SQLALCHEMY_ECHO'] = True
 db = SQLAlchemy(app)
 
 
 
 # Defining the model for the database using class method:
 class Data(db.Model):
-    __tablename__ = "ab_table"
+    __tablename__ = "weather_table"
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.Text(255))
     datetime = db.Column(db.Text(30))
@@ -51,10 +51,14 @@ class Data(db.Model):
     stations = db.Column(db.Text)
 
 
+
 @app.route('/')
 def index():
     data = Data.query.all()
+    print(data)  # Add this line for debugging
     return render_template('index.html', data=data)
+
+# Flask route to handle weather requests and chatbot response(***TO ADD ***):
 
 
 #having trouble rendering, the app I checked for any errors before running the app:
@@ -64,7 +68,7 @@ if __name__ == '__main__':
         db.create_all()
     except Exception as e:
         print(f"Error creating database: {e}")
-        # Add the following line to print the stack trace
+        # Adding the following line to print the stack trace:
         import traceback
         traceback.print_exc()
     app.run(debug=True)
