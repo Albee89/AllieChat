@@ -1,0 +1,14 @@
+{% block content %}
+    <h1>Chat with Allie</h1>
+
+    <div id="chat-container">
+        <div id="chatOutput">
+
+        </div>
+        <input type="text" id="userInput" placeholder="Type your message...">
+        <button onclick="sendMessage()">Send Message</button>
+    </div>
+
+    <script src="{{ url_for('static', filename='allieChat.js') }}"></script>
+
+{% endblock %}
