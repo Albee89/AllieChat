@@ -1,11 +1,12 @@
 import os
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, jsonify
 from flask_socketio import SocketIO
 from chatterbot import ChatBot
 from chatterbot.trainers import ListTrainer, ChatterBotCorpusTrainer
 from flask_sqlalchemy import SQLAlchemy
 import jsonify
 
+#initialising app and socetio:
 app = Flask(__name__)
 socketio = SocketIO(app)
 
@@ -87,7 +88,7 @@ try:
 except Exception as e:
     print(f"Error training with data from weather_table: {e}")
 
-# Use ChatterBotCorpusTrainer for training: 
+# Use ChatterBotCorpusTrainer for training:
 corpus_trainer = ChatterBotCorpusTrainer(my_bot)
 corpus_trainer.train('chatterbot.corpus.english')
 corpus_trainer.train('chatterbot.corpus.english.conversations')
@@ -99,12 +100,17 @@ def index():
     return render_template('base.html')
 
 
-
-#retrain route so the chatbot keeps learning:
+# Retrain the chatbot with data from the weather_table
 def retrain_chatbot():
     try:
-        for item in Data.query.all():
+        # Get all weather data from the database
+        all_weather_data = Data.query.all()
+
+        # Train the chatbot with conditions from each data entry
+        for item in all_weather_data:
             list_trainer.train([item.conditions])
+
+        print("Chatbot retrained successfully with weather data.")
     except Exception as e:
         print(f"Error retraining with data from weather_table: {e}")
 
@@ -113,37 +119,78 @@ def retrain_chatbot():
 def chatbot():
     if request.method == 'POST':
         # User has submitted a message via a form
-        user_input = request.form['user_input']
+        user_input = request.form['userInput']
 
-        # Retrain the chatbot with the latest data from weather_table
-        retrain_chatbot()
+        # Printing user input for debugging:
+        print(f"Received user input: {user_input}")
 
-        # Get a response from the chatbot
-        response = get_chatbot_response(user_input)
-        return jsonify({'user_input': user_input, 'bot_response': response})
+        # Checking if user is asking about the weather:
+        if 'weather' in user_input.lower():
+            # Extract city and date from the user input
+            tokens = user_input.split()
+            city_index = tokens.index('weather') + 1
+            date_index = city_index + 1 if city_index + 1 < len(tokens) else None
 
-    # Render the chatbot template for GET requests
+            city = tokens[city_index].capitalize() if city_index < len(tokens) else None
+            date = tokens[date_index] if date_index and date_index < len(tokens) else None
+
+            if city and date:
+                # Fetch weather data based on the city and date
+                city_weather = Data.query.filter_by(name=city, datetime=date).first()
+
+                if city_weather:
+                    # Print weather information for debugging
+                    print(f"Weather information for {city} on {date}: {city_weather.conditions}")
+
+                    # Retrain the chatbot with the latest weather data
+                    retrain_chatbot()
+
+                    # Getting a response from the chatbot:
+                    response = get_chatbot_response(user_input, city_weather.conditions)
+                    return render_template('chatbot.html', city=city, date=date, conditions=city_weather.conditions, botResponse=response)
+                else:
+                    response = f"Sorry, I couldn't find weather information for {city} on {date}."
+                    print(response)
+            else:
+                response = "Please specify both city and date for weather information."
+                print(response)
+        else:
+            # Retrain the chatbot with the latest data from weather_table
+            retrain_chatbot()
+
+            # Get a response from the chatbot
+            response = get_chatbot_response(user_input)
+
+        # Print bot response for debugging
+        print(f"Bot response: {response}")
+
+        return jsonify({'userInput': user_input, 'botResponse': response})
+
+    # Rendering the chatbot template for GET requests:
     return render_template('chatbot.html')
 
+# Defining the get_chatbot_response function:
+def get_chatbot_response(user_input, weather_conditions=None):
+    try:
+        if weather_conditions:
+            # Using the weather conditions to get specific response:
+            response = my_bot.get_response(f"Weather conditions: {weather_conditions}")
+        else:
+            # Using the user input to get a general response:
+            response = my_bot.get_response(user_input)
+        return response.text
+    except Exception as e:
+        print(f"Error getting chatbot response: {e}")
+        return "I'm sorry, I couldn't understand that."
 
 # SocketIO event added for handling messages:
 @socketio.on('message')
 def handle_message(msg):
     response = get_chatbot_response(msg)
     socketio.emit('message', {'user': msg, 'bot': response})
-    
-    
-def get_chatbot_response(user_input):
-    try:
-        response = my_bot.get_response(user_input)
-        return response.text
-    except Exception as e:
-        # Handle exceptions, print the error for debugging
-        print(f"Error getting chatbot response: {e}")
-        return "I'm sorry, I couldn't understand that."
 
 
-# Run the app through SocketIO
+# Running my app through SocketIO:
 if __name__ == '__main__':
     try:
         print(f"Database file path: {app.config['SQLALCHEMY_DATABASE_URI']}")
