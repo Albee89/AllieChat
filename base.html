@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename= 'css/style.css') }}">
+
+    <title>{% block title %}My App{% endblock %}</title>
+ 
+</head>
+<body>
+    <div class="container">
+        <ul>
+            <li><a href="/">Home</a></li>
+            <li><a href="/chatbot">AllieChat</a></li>
+        </ul>
+        {% block content %}{% endblock %}
+    </div>
+    <script src="{{ url_for('static', filename='allieChat.js') }}"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/3.0.4/socket.io.js"></script>
+<script>
+    var socket = io.connect('http://' + document.domain + ':' + location.port);
+</script>
+
+
+</body>
+</html>
