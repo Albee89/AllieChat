@@ -1,17 +1,19 @@
 {% extends "base.html" %}
 
-
 {% block content %}
     <h1>Chat with Allie</h1>
 
     <div id="chat-container">
         <div id="chatOutput">
-
+            <!-- Messages will be dynamically added here by your JavaScript code -->
         </div>
-        <input type="text" id="userInput" placeholder="how can I help?...">
+        <input type="text" id="userInput" placeholder="Type your message...">
         <button onclick="sendMessage()">Send Message</button>
     </div>
 
-
-
+    <script src="{{ url_for('static', filename='allieChat.js') }}"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/3.0.4/socket.io.js"></script>
+    <script>
+        var socket = io.connect('http://' + document.domain + ':' + location.port);
+    </script>
 {% endblock %}
