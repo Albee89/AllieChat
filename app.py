@@ -1,22 +1,29 @@
 import os
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, jsonify
 from flask_socketio import SocketIO
 from chatterbot import ChatBot
 from chatterbot.trainers import ListTrainer, ChatterBotCorpusTrainer
 from flask_sqlalchemy import SQLAlchemy
-import jsonify
+from flask import jsonify
+import pandas as pd
+from dotenv import load_dotenv
+import requests
+
 
 app = Flask(__name__)
 socketio = SocketIO(app)
 
-# Configuration for SQLite DB
+load_dotenv()
+
 db_name = "/Users/ruthfisher-bain/PycharmProjects/pythonProject3/newest_chat.db"
+db = SQLAlchemy(app)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + db_name
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db = SQLAlchemy(app)
 
+#accessing API key from environment:
+api_key = os.getenv('API_KEY')
 
-# Define the model for the database using the class method
+# Defining the model for the database using the class method:
 class Data(db.Model):
     __tablename__ = "weather_table"
     id = db.Column(db.Integer, primary_key=True)
@@ -53,8 +60,6 @@ class Data(db.Model):
     icon = db.Column(db.Text)
     stations = db.Column(db.Text)
 
-
-# Create a ChatBot instance with SQLStorageAdapter
 my_bot = ChatBot(
     'Allie',
     storage_adapter='chatterbot.storage.SQLStorageAdapter',
@@ -65,10 +70,8 @@ my_bot = ChatBot(
     ]
 )
 
-# Create a ListTrainer instance
 list_trainer = ListTrainer(my_bot)
 
-# Train the ChatBot using conversations
 introductions = [
     "Hi, how are you?",
     "Hello! My name is AllieChat, and I love to chat! How can I help you today?",
@@ -77,77 +80,145 @@ introductions = [
     "I'm AllieChat and I'm here for all your ExploreUK weather needs!"
 ]
 
-# Train the ListTrainer with strings directly
 list_trainer.train(list(intro for intro in introductions))
 
-# Train the ChatBot using data from the "weather_table" table in the database
 try:
     for item in Data.query.all():
         list_trainer.train([item.conditions])
 except Exception as e:
     print(f"Error training with data from weather_table: {e}")
 
-# Use ChatterBotCorpusTrainer for training on English language data
 corpus_trainer = ChatterBotCorpusTrainer(my_bot)
 corpus_trainer.train('chatterbot.corpus.english')
 corpus_trainer.train('chatterbot.corpus.english.conversations')
 
+#training the bot using pandas:
+blogger_locations = pd.read_csv('weather_forecast.csv')
+try:
+    for index, row in blogger_locations.iterrows():
+        conditions = row['conditions']
+        list_trainer.train([conditions])
+except Exception as e:
+    print(f"Error training with data from weather_forecast.csv: {e}")
 
-# Routes
-@app.route('/')
-def index():
-    return render_template('base.html')
 
+#training bot using Open Weather Map data and my API key:
+def fetch_openweather_data_for_multiple_cities(cities):
+    weather_data_list = []
 
-# New route for the chatbot
- #this function has been added retrain the chatbot with data from the "weather_table":
+    for city in cities:
+        base_url = 'http://api.openweathermap.org/data/2.5/weather'
+        params = {
+            'q': city,
+            'appid': api_key,
+        }
+
+        try:
+            response = requests.get(base_url, params=params)
+            response.raise_for_status()
+            weather_data = response.json()
+            description = weather_data.get('weather')[0].get('description')
+            weather_data_list.append({'city': city, 'description': description})
+        except requests.exceptions.RequestException as e:
+            print(f"Error fetching OpenWeather data for {city}: {e}")
+
+    return weather_data_list
+
+# List of cities t fulfill customer needs of returning more than one location at a time
+city_names = ['CorfeCastle', 'TheCotswolds', 'Bristol', 'Oxford', 'Norwich', 'Stonehenge',
+              'WatergateBay', 'Birmingham' ]
+
+# Fetching weather data from Open Weather API for multiple cities:
+weather_data_list = fetch_openweather_data_for_multiple_cities(city_names)
+
+# Training the chatbot with the Open Weather data:
+try:
+    for weather_data in weather_data_list:
+        description = weather_data.get('description')
+        if description:
+            list_trainer.train([description])
+except Exception as e:
+    print(f"Error training with OpenWeather data: {e}")
+
+#retrain chatbot function to consistently train AllieChat:
+
 def retrain_chatbot():
     try:
-        for item in Data.query.all():
+        all_weather_data = Data.query.all()
+        for item in all_weather_data:
             list_trainer.train([item.conditions])
+
+        print("Chatbot retrained successfully with weather data.")
     except Exception as e:
         print(f"Error retraining with data from weather_table: {e}")
 
-# New route for the chatbot
-@app.route('/chatbot', methods=['GET', 'POST'])
-def chatbot():
-    if request.method == 'POST':
-        # User has submitted a message via a form
-        user_input = request.form['user_input']
 
-        # Retrain the chatbot with the latest data from weather_table
-        retrain_chatbot()
-
-        # Get a response from the chatbot
-        response = get_chatbot_response(user_input)
-        return jsonify({'user_input': user_input, 'bot_response': response})
-
-    # Render the chatbot template for GET requests
-    return render_template('chatbot.html')
+#defining chatbot response:
+def get_chatbot_response(user_input, weather_conditions=None):
+    try:
+        if weather_conditions:
+            response = my_bot.get_response(f"Weather conditions: {weather_conditions}")
+        else:
+            response = my_bot.get_response(user_input)
+        return response.text
+    except Exception as e:
+        print(f"Error getting chatbot response: {e}")
+        return "I'm sorry, I couldn't understand that."
 
 
-# SocketIO event added for handling messages:
+#app route with index.html template:
+@app.route('/')
+def home():
+    return render_template('index.html')
+
+#establishing socket.io library server:
 @socketio.on('message')
 def handle_message(msg):
-    response = get_chatbot_response(msg)
-    socketio.emit('message', {'user': msg, 'bot': response})
+    user_input = msg['user_input']
+    weather_conditions = msg.get('weather_conditions')
+
+    try:
+        if weather_conditions:
+            response_text = my_bot.get_response(f"Weather conditions: {weather_conditions}").text
+        else:
+            response_text = my_bot.get_response(user_input).text
+
+        socketio.emit('message', {'user_input': user_input, 'bot_response': response_text})
+    except Exception as e:
+        print(f"Error getting chatbot response: {e}")
+        socketio.emit('message', {'user_input': user_input, 'bot_response': "I'm sorry, I couldn't understand that."})
 
 
-def get_chatbot_response(user_input):
-    return my_bot.get_response(user_input).text
+@app.route('/chatbot', methods=['POST'])
+def chatbot():
+    user_input = request.json.get('userInput')
+    weather_conditions = request.json.get('weatherConditions')
+
+    try:
+        if weather_conditions:
+            response_text = my_bot.get_response(f"Weather conditions: {weather_conditions}").text
+        else:
+            response_text = my_bot.get_response(user_input).text
+
+        return jsonify({'userInput': user_input, 'botResponse': response_text})
+    except Exception as e:
+        print(f"Error getting chatbot response: {e}")
+        return jsonify({'userInput': user_input, 'botResponse': "I'm sorry, I couldn't understand that."})
 
 
-# Run the app through SocketIO
+#running the app:
 if __name__ == '__main__':
     try:
+        # Print the database file path for debugging purposes
         print(f"Database file path: {app.config['SQLALCHEMY_DATABASE_URI']}")
+
+        # Creating the database tables- this was a huge step I had initially missed!
         db.create_all()
+
+        # Run the Flask app with SocketIO
         socketio.run(app, debug=True, allow_unsafe_werkzeug=True, use_reloader=False)
+
     except Exception as e:
         print(f"Error creating database or running app: {e}")
         import traceback
-
         traceback.print_exc()
-
-
-

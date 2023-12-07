@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block title %}Data Exploration{% endblock %}
+
+{% block content %}
+    <h1>Data Exploration</h1>
+
+    <div id="chat-container">
+        <!-- Displaying chat messages -->
+        <div id="chatOutput">
+            <div class="chat-message bot-message">
+                <p>Hello! I'm here to help you explore the data.</p>
+            </div>
+        </div>
+
+        <!-- User input field and send button -->
+        <input type="text" id="userInput" placeholder="Type your message...">
+        <button onclick="sendMessage()">Send Message</button>
+    </div>
+
+    <!-- JavaScript for handling chat functionality -->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/3.0.4/socket.io.js"></script>
+<script src="{{ url_for('static', filename='allieChat.js') }}"></script>
+<script>
+    var socket = io.connect('http://' + document.domain + ':' + location.port);
+</script>
+
+{% endblock %}

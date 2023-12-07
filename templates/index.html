@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}My App{% endblock %}</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.1.2/socket.io.js"></script>
+</head>
+
+<body>
+    {% block content %}
+    <div id="chatOutput"></div>
+    <input type="text" id="userInput" placeholder="Type your message">
+    <button onclick="sendMessage()">Send</button>
+
+    <script>
+        const socket = io.connect();
+
+        function sendMessage() {
+            var userInput = document.getElementById("userInput").value.trim();
+            if (userInput !== "") {
+                socket.emit('message', { user_input: userInput });
+                document.getElementById("userInput").value = "";
+            }
+        }
+
+        socket.on('message', function(data) {
+            if (!data.bot_response) {
+                console.log('Chat bot did not respond.');
+                return;
+            }
+
+            console.log('User Input:', data.user_input);
+            console.log('Bot Response:', data.bot_response);
+
+            document.getElementById("chatOutput").innerHTML +=
+                '<div><strong>User:</strong> ' + data.user_input + '</div>' +
+                '<div><strong>Bot:</strong> ' + data.bot_response + '</div>';
+        });
+    </script>
+    {% endblock %}
+
+    <script src="{{ url_for('static', filename='allieChat.js') }}"></script>
+    <script>
+        var socket = io.connect('http://' + document.domain + ':' + location.port);
+    </script>
+</body>
+
+</html>
