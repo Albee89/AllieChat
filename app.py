@@ -1,3 +1,4 @@
+# importing the many libraries required:
 import os
 from flask import Flask, render_template, request, jsonify
 from flask_socketio import SocketIO
@@ -7,21 +8,32 @@ from flask_sqlalchemy import SQLAlchemy
 from flask import jsonify
 import pandas as pd
 from dotenv import load_dotenv
+from concurrent.futures import ThreadPoolExecutor
 import requests
 
-
+# initialisng app and Socket.io library:
 app = Flask(__name__)
 socketio = SocketIO(app)
 
+# load.dotenv for pulling my API key from my environment:
 load_dotenv()
 
-db_name = "/Users/ruthfisher-bain/PycharmProjects/pythonProject3/newest_chat.db"
+# initialising database through SQLAlchemy:
+db_name = "newest_chat.db"
 db = SQLAlchemy(app)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + db_name
+# Constructing the full path using os.path.join for platform independence:
+db_path = os.path.join("/Users/ruthfisher-bain/PycharmProjects/pythonProject3", db_name)
+# Setting the SQLALCHEMY_DATABASE_URI
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + db_path
+
+# Disabling SQLALCHEMY_TRACK_MODIFICATIONS
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-#accessing API key from environment:
-api_key = os.getenv('API_KEY')
+# accessing API key from environment:
+api_key = os.getenv('API_KEY')  # checking the key is available in environment to use:
+if not api_key:
+    raise ValueError("API_KEY not found in environment variables.")
+
 
 # Defining the model for the database using the class method:
 class Data(db.Model):
@@ -60,6 +72,8 @@ class Data(db.Model):
     icon = db.Column(db.Text)
     stations = db.Column(db.Text)
 
+
+# creating my chatbot instance:
 my_bot = ChatBot(
     'Allie',
     storage_adapter='chatterbot.storage.SQLStorageAdapter',
@@ -69,9 +83,15 @@ my_bot = ChatBot(
         'chatterbot.logic.BestMatch'
     ]
 )
-
+# training the bot, here with Data class:
 list_trainer = ListTrainer(my_bot)
+try:
+    for item in Data.query.all():
+        list_trainer.train([item.conditions])
+except Exception as e:
+    print(f"Error training with data from weather_table: {e}")
 
+# conversations for training:
 introductions = [
     "Hi, how are you?",
     "Hello! My name is AllieChat, and I love to chat! How can I help you today?",
@@ -82,78 +102,43 @@ introductions = [
 
 list_trainer.train(list(intro for intro in introductions))
 
-try:
-    for item in Data.query.all():
-        list_trainer.train([item.conditions])
-except Exception as e:
-    print(f"Error training with data from weather_table: {e}")
+list_trainer.train('chat_files/chats.txt')
+list_trainer.train('chat_files/weather.txt')
 
 corpus_trainer = ChatterBotCorpusTrainer(my_bot)
 corpus_trainer.train('chatterbot.corpus.english')
 corpus_trainer.train('chatterbot.corpus.english.conversations')
 
-#training the bot using pandas:
+# training the bot using pandas:
 blogger_locations = pd.read_csv('weather_forecast.csv')
-try:
+try:  # for loop to retrieve weather_forecast data:
     for index, row in blogger_locations.iterrows():
         conditions = row['conditions']
-        list_trainer.train([conditions])
+        list_trainer.train([conditions])  # error handling:
 except Exception as e:
     print(f"Error training with data from weather_forecast.csv: {e}")
 
 
-#training bot using Open Weather Map data and my API key:
-def fetch_openweather_data_for_multiple_cities(cities):
-    weather_data_list = []
-
-    for city in cities:
-        base_url = 'http://api.openweathermap.org/data/2.5/weather'
-        params = {
-            'q': city,
-            'appid': api_key,
-        }
-
-        try:
-            response = requests.get(base_url, params=params)
-            response.raise_for_status()
-            weather_data = response.json()
-            description = weather_data.get('weather')[0].get('description')
-            weather_data_list.append({'city': city, 'description': description})
-        except requests.exceptions.RequestException as e:
-            print(f"Error fetching OpenWeather data for {city}: {e}")
-
-    return weather_data_list
-
-# List of cities t fulfill customer needs of returning more than one location at a time
-city_names = ['CorfeCastle', 'TheCotswolds', 'Bristol', 'Oxford', 'Norwich', 'Stonehenge',
-              'WatergateBay', 'Birmingham' ]
-
-# Fetching weather data from Open Weather API for multiple cities:
-weather_data_list = fetch_openweather_data_for_multiple_cities(city_names)
-
-# Training the chatbot with the Open Weather data:
-try:
-    for weather_data in weather_data_list:
-        description = weather_data.get('description')
-        if description:
-            list_trainer.train([description])
-except Exception as e:
-    print(f"Error training with OpenWeather data: {e}")
-
-#retrain chatbot function to consistently train AllieChat:
-
-def retrain_chatbot():
-    try:
-        all_weather_data = Data.query.all()
-        for item in all_weather_data:
-            list_trainer.train([item.conditions])
-
-        print("Chatbot retrained successfully with weather data.")
-    except Exception as e:
-        print(f"Error retraining with data from weather_table: {e}")
+# training bot using Open Weather Map data and my API key:
+def fetch_openweather_data(city):
+    # Function to fetch OpenWeather data for a single city
+    base_url = 'http://api.openweathermap.org/data/2.5/city'
+    params = {'q': city, 'appid': api_key}
+    response = requests.get(base_url, params=params)
+    response.raise_for_status()
+    return response.json()
 
 
-#defining chatbot response:
+# List of cities to fetch OpenWeather data for
+city_id = ['2634776','2648402', '2654675', '2640729', '2641181', '2638664', '2641589',
+           '2653941', '2655603']
+
+# Fetch OpenWeather data in parallel
+with ThreadPoolExecutor() as executor:
+    weather_data_list = list(executor.map(fetch_openweather_data, city_id))
+
+
+# getting chatbot response:
 def get_chatbot_response(user_input, weather_conditions=None):
     try:
         if weather_conditions:
@@ -166,23 +151,19 @@ def get_chatbot_response(user_input, weather_conditions=None):
         return "I'm sorry, I couldn't understand that."
 
 
-#app route with index.html template:
+# app route with index.html template:
 @app.route('/')
 def home():
     return render_template('index.html')
 
-#establishing socket.io library server:
+
+# establishing socket.io library server:
 @socketio.on('message')
 def handle_message(msg):
     user_input = msg['user_input']
     weather_conditions = msg.get('weather_conditions')
-
     try:
-        if weather_conditions:
-            response_text = my_bot.get_response(f"Weather conditions: {weather_conditions}").text
-        else:
-            response_text = my_bot.get_response(user_input).text
-
+        response_text = get_chatbot_response(user_input, weather_conditions)
         socketio.emit('message', {'user_input': user_input, 'bot_response': response_text})
     except Exception as e:
         print(f"Error getting chatbot response: {e}")
@@ -193,20 +174,15 @@ def handle_message(msg):
 def chatbot():
     user_input = request.json.get('userInput')
     weather_conditions = request.json.get('weatherConditions')
-
     try:
-        if weather_conditions:
-            response_text = my_bot.get_response(f"Weather conditions: {weather_conditions}").text
-        else:
-            response_text = my_bot.get_response(user_input).text
-
+        response_text = get_chatbot_response(user_input, weather_conditions)
         return jsonify({'userInput': user_input, 'botResponse': response_text})
     except Exception as e:
         print(f"Error getting chatbot response: {e}")
         return jsonify({'userInput': user_input, 'botResponse': "I'm sorry, I couldn't understand that."})
 
 
-#running the app:
+# running the app:
 if __name__ == '__main__':
     try:
         # Print the database file path for debugging purposes
@@ -221,4 +197,15 @@ if __name__ == '__main__':
     except Exception as e:
         print(f"Error creating database or running app: {e}")
         import traceback
+
         traceback.print_exc()
+
+print("CSV Data:")
+print(blogger_locations.head())
+
+print("API Data:")
+print(fetch_openweather_data(city_names))
+
+print("Database Data:")
+for item in Data.query.all():
+    print(item.conditions)
