@@ -14,37 +14,37 @@
     <input type="text" id="userInput" placeholder="Type your message">
     <button onclick="sendMessage()">Send</button>
 
-    <script>
-        const socket = io.connect();
 
-        function sendMessage() {
-            var userInput = document.getElementById("userInput").value.trim();
-            if (userInput !== "") {
-                socket.emit('message', { user_input: userInput });
-                document.getElementById("userInput").value = "";
-            }
+<script>
+    const socket = io.connect();
+
+    function sendMessage() {
+        var userInput = document.getElementById("userInput").value.trim();
+        if (userInput !== "") {
+            socket.emit('message', { user_input: userInput });
+            document.getElementById("userInput").value = "";
+        }
+    }
+
+    socket.on('message', function(data) {
+        if (!data.bot_response) {
+            console.log('Chat bot did not respond.');
+            return;
         }
 
-        socket.on('message', function(data) {
-            if (!data.bot_response) {
-                console.log('Chat bot did not respond.');
-                return;
-            }
+        console.log('User Input:', data.user_input);
+        console.log('Bot Response:', data.bot_response);
 
-            console.log('User Input:', data.user_input);
-            console.log('Bot Response:', data.bot_response);
+        document.getElementById("chatOutput").innerHTML +=
+            '<div><strong>User:</strong> ' + data.user_input + '</div>' +
+            '<div><strong>Bot:</strong> ' + data.bot_response + '</div>';
+    });
+</script>
 
-            document.getElementById("chatOutput").innerHTML +=
-                '<div><strong>User:</strong> ' + data.user_input + '</div>' +
-                '<div><strong>Bot:</strong> ' + data.bot_response + '</div>';
-        });
-    </script>
     {% endblock %}
 
-    <script src="{{ url_for('static', filename='allieChat.js') }}"></script>
-    <script>
-        var socket = io.connect('http://' + document.domain + ':' + location.port);
-    </script>
+  <script src="{{ url_for('static', filename='allieChat.js') }}"></script>
+
 </body>
 
 </html>
