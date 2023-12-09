@@ -8,8 +8,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask import jsonify
 import pandas as pd
 from dotenv import load_dotenv
-from concurrent.futures import ThreadPoolExecutor
-import requests
+
 
 # initialisng app and Socket.io library:
 app = Flask(__name__)
@@ -28,12 +27,6 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + db_path
 
 # Disabling SQLALCHEMY_TRACK_MODIFICATIONS
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
-# accessing API key from environment:
-api_key = os.getenv('API_KEY')  # checking the key is available in environment to use:
-if not api_key:
-    raise ValueError("API_KEY not found in environment variables.")
-
 
 # Defining the model for the database using the class method:
 class Data(db.Model):
@@ -120,23 +113,35 @@ except Exception as e:
 
 
 # training bot using Open Weather Map data and my API key:
-def fetch_openweather_data(city):
-    # Function to fetch OpenWeather data for a single city
-    base_url = 'http://api.openweathermap.org/data/2.5/city'
-    params = {'q': city, 'appid': api_key}
+import requests
+from concurrent.futures import ThreadPoolExecutor
+
+
+from concurrent.futures import ThreadPoolExecutor
+import requests
+
+# accessing API key from environment:
+api_key = os.getenv('API_KEY')  # checking the key is available in environment to use:
+if not api_key:
+    raise ValueError("API_KEY not found in environment variables.")
+
+
+def fetch_openweather_data(location):
+    # Function to fetch OpenWeather data for a single location:
+    base_url = 'http://api.openweathermap.org/data/2.5/weather'
+    params = {'q': location, 'appid': api_key}
     response = requests.get(base_url, params=params)
     response.raise_for_status()
     return response.json()
 
+# List of locations to fetch OpenWeather data for:
+location_name = ['Corfe Castle', 'Gloucestershire', 'Cambridge',
+                 'Stonehenge', 'Newquay', 'Corfe Castle',
+                 'Bristol', 'Oxford', 'Norwich']
 
-# List of cities to fetch OpenWeather data for
-city_id = ['2634776','2648402', '2654675', '2640729', '2641181', '2638664', '2641589',
-           '2653941', '2655603']
 
-# Fetch OpenWeather data in parallel
 with ThreadPoolExecutor() as executor:
-    weather_data_list = list(executor.map(fetch_openweather_data, city_id))
-
+    weather_data_list = list(executor.map(fetch_openweather_data, location_name))
 
 # getting chatbot response:
 def get_chatbot_response(user_input, weather_conditions=None):
@@ -204,7 +209,7 @@ print("CSV Data:")
 print(blogger_locations.head())
 
 print("API Data:")
-print(fetch_openweather_data(city_names))
+print(fetch_openweather_data(location_name))
 
 print("Database Data:")
 for item in Data.query.all():
