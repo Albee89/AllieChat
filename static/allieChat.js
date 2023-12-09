@@ -1,38 +1,49 @@
 // Importing the necessary modules:
 const axios = require('axios');
-const http = require('http');
+const http = require('http');  // Add this line to import the http module
 const express = require('express');
 const socketIO = require('socket.io');
 
-// Creating an Express app
+// Creating an Express app:
 const app = express();
 const server = http.createServer(app);
 
-// Establish a connection to the Socket.IO server
+// Establishing a connection to Socket.IO server
 const io = socketIO(server);
 
-// using static files from the "static" directory
+// Caching object to store weather data
+const weatherCache = {};
+
+// using static files from the "static" directory:
 app.use(express.static('static'));
 
-// Define a route to serve your HTML file
+// Defining a route to serve  my index.html file:
 app.get('/', (req, res) => {
     res.sendFile(__dirname + '/templates/index.html');
 });
 
-// Event listener for incoming connections
+// Event listener for incoming connections:
 io.on('connection', (socket) => {
     console.log('A user connected');
 
     // Event listener for incoming messages:
-    socket.on('message', (data) => {
+    socket.on('message', async (data) => {
         // Your existing message handling logic
         console.log('User Input:', data.user_input);
 
-        // Integrate your ChatterBot logic here to get a response
-        const botResponse = getChatbotResponse(data.user_input);
-
-        // Emitting a 'message' event with the user input and bot response:
-        io.emit('message', { user_input: data.user_input, bot_response: botResponse });
+        // Check if weather data is cached for the given location:
+        if (weatherCache[data.user_input]) {
+            console.log('Using cached weather data');
+            // Use cached data instead of making an API call
+            const botResponse = getChatbotResponse(data.user_input, weatherCache[data.user_input]);
+            io.emit('message', { user_input: data.user_input, bot_response: botResponse });
+        } else {
+            // If not cached, this will make API call and cache the result:
+            const weatherData = await fetchWeatherData(data.user_input);
+            weatherCache[data.user_input] = weatherData;
+            const botResponse = getChatbotResponse(data.user_input, weatherData);
+            io.emit('message', { user_input: data.user_input, bot_response: botResponse });
+        }
     });
 
     // Event listener for disconnect
@@ -42,13 +53,42 @@ io.on('connection', (socket) => {
 });
 
 // Start the server
-const port = 5000; // Choose a port
+const port = 5000; // Choosing the usual port
 server.listen(port, () => {
     console.log(`Server is running on http://localhost:${port}`);
 });
 
-// Function to get a response from your ChatterBot
-function getChatbotResponse(userInput) {
+// Function to get a response from my chatbot:
+function getChatbotResponse(userInput, weatherData) {
+    // Sending the user input to the Flask backend, another important step I missed!
+    axios.post('/chatbot', { userInput: userInput })
+        .then(response => {
+            const botResponse = response.data.botResponse;
+            // Processing the bot response:
+            console.log('Bot Response:', botResponse);
 
-    return 'Your bot response goes here';
+            // Updating  UI & performing actions with the bot response:
+            document.getElementById("chatOutput").innerHTML +=
+                `<div><strong>User:</strong> ${userInput}</div>` +
+                `<div><strong>Bot:</strong> ${botResponse}</div>`;
+        })
+        .catch(error => {
+            console.error('Error getting bot response:', error);
+        });
+}
+
+// Function to fetch weather data from the API
+async function fetchWeatherData(location) {
+    // Your existing logic to fetch weather data
+    // Update this function as needed
+    const apiKey = 'API_KEY';
+    const apiUrl = `https://api.openweathermap.org/data/2.5/weather?q=${location}&appid=${apiKey}`;
+
+    try {
+        const response = await axios.get(apiUrl);
+        return response.data; // Assuming the API response is JSON
+    } catch (error) {
+        console.error('Error fetching weather data:', error);
+        return null;
+    }
 }
