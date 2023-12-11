@@ -1,0 +1,44 @@
+User: How hot is it tomorrow?
+Bot: Please be more specific.
+
+User: What is the weather in The Cotswolds like on Dec 11?
+Bot: The weather in The Cotswolds, Gloucestershire, UK is [weather_conditions]
+
+User: Is it going to rain tomorrow  in Norwich?
+Bot: the weather tomorrow in Norwich is [weather_conditions]
+
+User: Is it going to rain tomorrow in Birmingham
+Bot: The weather tomorrow in Birmingham tomorrow is: [weather_conditions]
+
+User: What is the weather in Watergate Bay tomorrow?
+Bot: The Weather in Newquay is [weather_conditions]
+
+User: What is the weather like in the Cotswolds next week?
+Bot: the weather next week in The Cotswolds, Gloucestershire is [weather_conditions]
+
+User: What is the weather in Corfe Castle, UK tomorrow?
+Bot: The weather in Corfe Castle, UK is [weather_conditions]
+
+User: What is the weather like in Norwich in two days?
+Bot: The weather in Norwich in the next two days is [weather_conditions]
+
+User: What is the weather like in Cambridge, UK tomorrow?
+Bot:  The weather in Cambridge, UK tomorrow is [weather_conditions]
+
+User: Tell me about the weather in Norwich on December 12th.
+Bot: The weather in Norwich on December 12th is: [weather_conditions]
+
+User: Is it going to rain in Oxford on December 15th?
+Bot: On December 15th in Oxford, the weather is: [weather_conditions]
+
+User: What's the weather forecast for Corfe Castle on the day after tomorrow?
+Bot: The weather in Corfe Castle the day after tomorrow is: [weather_conditions]
+
+User: Tell me about the weather in Stonehenge the day after tomorrow.
+Bot: The weather in Stonehenge is: [weather_conditions]
+
+User: What is the weather like in Oxford on December 18th?
+Bot: The weather in Oxford on December 18th is [weather_conditions]]
+
+User: Tell me about the weather in Corfe Castle tomorrow. Is it raining?
+Bot: The weather in [Corfe Castle] is [weather]
