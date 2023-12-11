@@ -1,0 +1,26 @@
+User: What is the weather in Corfe Castle tomorrow?
+Bot: The weather in Corfe Castle is [weather_conditions] tomorrow.
+
+User: Tell me about the weather in The Cotswolds next week.
+Bot: The weather next week in The Cotswolds, Gloustershire, UK is [weather_conditions].
+
+User: What is the weather like in Cambridge, UK tomorrow?
+Bot: The weather in Cambridge, UK is [weather_conditions] tomorrow.
+
+User: Can you provide the weather forecast for Bristol in the next few days?
+Bot: Sure, here is the weather forecast for Bristol over the next few days: [weather_conditions].
+
+User: How about the weather in Oxford today?
+Bot: Currently in Oxford, the weather is [weather_conditions].
+
+User: What is the weather forecast for Norwich tomorrow?
+Bot: Tomorrow in Norwich, expect [weather_conditions].
+
+User: Tell me about the weather conditions in Stonehenge next week.
+Bot: Next week in Stonehenge, the weather will be [weather_conditions].
+
+User: What's the weather like in Watergate Bay right now?
+Bot: Currently in Watergate Bay, Newquay, UK the weather is [weather_info].
+
+User: Give me the weather forecast for Birmingham for the upcoming weekend.
+Bot: Planning ahead for Birmingham this weekend? Expect [weather_info].
