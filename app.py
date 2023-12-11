@@ -10,6 +10,8 @@ import pandas as pd
 from dotenv import load_dotenv
 
 
+from sqlalchemy import create_engine
+
 # initialisng app and Socket.io library:
 app = Flask(__name__)
 socketio = SocketIO(app)
@@ -21,12 +23,13 @@ load_dotenv()
 db_name = "newest_chat.db"
 db = SQLAlchemy(app)
 # Constructing the full path using os.path.join for platform independence:
-db_path = os.path.join("/Users/ruthfisher-bain/PycharmProjects/pythonProject3", db_name)
+db_path = os.path.join("/Users/ruthfisher-bain/PycharmProjects/pythonProject3/", db_name)
 # Setting the SQLALCHEMY_DATABASE_URI
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + db_path
 
 # Disabling SQLALCHEMY_TRACK_MODIFICATIONS
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
 
 # Defining the model for the database using the class method:
 class Data(db.Model):
@@ -68,13 +71,13 @@ class Data(db.Model):
 
 # creating my chatbot instance:
 my_bot = ChatBot(
-    'Allie',
+    'AllieChat',
     storage_adapter='chatterbot.storage.SQLStorageAdapter',
     database_uri='sqlite:///newest_chat.db',
     logic_adapters=[
         'chatterbot.logic.MathematicalEvaluation',
         'chatterbot.logic.BestMatch'
-    ]
+    ],
 )
 # training the bot, here with Data class:
 list_trainer = ListTrainer(my_bot)
@@ -97,6 +100,8 @@ list_trainer.train(list(intro for intro in introductions))
 
 list_trainer.train('chat_files/chats.txt')
 list_trainer.train('chat_files/weather.txt')
+list_trainer.train('chat_files/locations.txt')
+list_trainer.train('chat_files/locations2.txt')
 
 corpus_trainer = ChatterBotCorpusTrainer(my_bot)
 corpus_trainer.train('chatterbot.corpus.english')
@@ -113,10 +118,6 @@ except Exception as e:
 
 
 # training bot using Open Weather Map data and my API key:
-import requests
-from concurrent.futures import ThreadPoolExecutor
-
-
 from concurrent.futures import ThreadPoolExecutor
 import requests
 
@@ -142,6 +143,7 @@ location_name = ['Corfe Castle', 'Gloucestershire', 'Cambridge',
 
 with ThreadPoolExecutor() as executor:
     weather_data_list = list(executor.map(fetch_openweather_data, location_name))
+
 
 # getting chatbot response:
 def get_chatbot_response(user_input, weather_conditions=None):
