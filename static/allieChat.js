@@ -1,10 +1,9 @@
-
-
 // Importing the necessary modules:
 const axios = require('axios');
 const http = require('http');  // Add this line to import the http module
 const express = require('express');
 const socketIO = require('socket.io');
+require('dotenv').config();
 
 // Creating an Express app:
 const app = express();
@@ -79,11 +78,16 @@ function getChatbotResponse(userInput, weatherData) {
         });
 }
 
-// Function to fetch weather data from the API
 async function fetchWeatherData(location) {
-    // Your existing logic to fetch weather data
-    // Update this function as needed
-    const apiKey = 'API_KEY';
+    // Retrieve the API key from the environment variable
+    const apiKey = process.env.API_KEY;
+
+    // Check if the API key is available
+    if (!apiKey) {
+        console.error('API_KEY not found in environment variables.');
+        return null;
+    }
+
     const apiUrl = `https://api.openweathermap.org/data/2.5/weather?q=${location}&appid=${apiKey}`;
 
     try {
