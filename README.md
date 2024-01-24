@@ -4,5 +4,5 @@ with a route for displaying chatbot responses.
 
 Please install and run on Python 3.7.9. 
 How to Use: type your weather-related question into the AllieChat and hint enter, who will answer you shortly. 
-With thanks to Gita Das from Swinburne Online. 
+Submitted in HD-graded Swinburne Graduate Certificate of Programming and Development final assignment.
 
